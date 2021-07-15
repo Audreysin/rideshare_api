@@ -1,8 +1,12 @@
 const express = require('express');
 const { graphqlHTTP } = require('express-graphql');
 const { buildSchema} = require('graphql');
+const mongoose = require('mongoose');
 
 const app = express();
+const db_uri = `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@cluster0.lhpdr.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
+
+console.log(db_uri);
 
 const rides = [];
 
@@ -70,4 +74,11 @@ app.use(
     })
 );
 
-app.listen(3000);
+mongoose.connect(db_uri, { useNewUrlParser: true, useUnifiedTopology: true })
+.then (() => {
+    app.listen(3000);
+    console.log("Connection successful");
+})
+.catch(err => {
+    console.log(err);
+});
