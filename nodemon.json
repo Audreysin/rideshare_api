@@ -1,6 +1,7 @@
 {
     "env": {
         "MONGO_USER": "user_a0",
-        "MONGO_PASSWORD": "UYORuGBIgVNa"
+        "MONGO_PASSWORD": "UYORuGBIgVNa",
+        "MONGO_DB": "ride-react-dev"
     }
 }
