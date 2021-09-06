@@ -47,7 +47,7 @@ module.exports = {
             throw err
         }
     },
-    createRide: args => {
+    createRide: async args => {
         const newRide = new Ride({
             destLocation: args.rideInput.destLocation,
             departLocation: args.rideInput.departLocation,
@@ -58,55 +58,40 @@ module.exports = {
             creator: '613616427985426a2bdeed91' // const obtained from MongoDB for now
         });
         let createdRide;
-        return newRide
-            .save()
-            .then(result => {
-                createdRide = { 
-                    ...result._doc, 
-                    _id:result._doc._id.toString(), 
-                    date: new Date(result._doc.date).toISOString(), 
-                    creator: populateUser.bind(this, result._doc.creator) 
-                };
-                return User.findById('613616427985426a2bdeed91');
-            })
-            .then(user => {
-                if (!user) {
-                    throw new Error("User not found");
-                }
-                user.createdRides.push(newRide);
-                return user.save();
-            })
-            .then(result => {
-                return createdRide;
-            })
-            .catch(err => {
-                console.log(err);
-            });
-    },
-    createUser: args => {
-        return User.findOne({ email: args.userInput.email }).then(user => {
-            if (user) {
-                throw new Error('User already exists.')
+        try {
+            const result = await newRide.save();
+            createdRide = { 
+                ...result._doc, 
+                _id:result._doc._id.toString(), 
+                date: new Date(result._doc.date).toISOString(), 
+                creator: populateUser.bind(this, result._doc.creator) 
+            };
+            const user = await User.findById('613616427985426a2bdeed91');
+            if (!user) {
+                throw new Error("User not found");
             }
-            return bcrypt.hash(args.userInput.password, 12);
-        })
-        .then(hashedPassword => {
+            user.createdRides.push(newRide);
+            await user.save();
+            return createdRide;
+        } catch(err) {
+            console.log(err);
+        }
+    },
+    createUser: async args => {
+        try {
+            const user = await User.findOne({ email: args.userInput.email });
+            if (user) {
+                throw new Error('User already exists.');
+            }
+            const hashedPassword = await bcrypt.hash(args.userInput.password, 12);
             const newUser = new User({
                 email: args.userInput.email,
                 password: hashedPassword
             });
-            return newUser.save()
-                .then(result => {
-                    console.log(result);
-                    return { ...result._doc, password: null, _id: result._doc._id.toString() };
-                })
-                .catch(err => {
-                    console.log(err);
-                }); 
-            })
-        .catch(err => {
-            throw err
-        });
+            const result = await newUser.save();
+            return { ...result._doc, password: null, _id: result._doc._id.toString() };
+        } catch(err) {
+            throw err;
+        }
     }
-
 }
