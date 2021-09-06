@@ -26,6 +26,10 @@ const rideSchema = new Schema({
     isDriver: {
         type: Boolean,
         required: true
+    },
+    creator: {
+        type: Schema.Types.ObjectId,
+        ref: 'User'
     }
 });
 

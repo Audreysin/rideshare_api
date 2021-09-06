@@ -2,9 +2,10 @@ const express = require('express');
 const { graphqlHTTP } = require('express-graphql');
 const { buildSchema} = require('graphql');
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
-const Ride = require('./models/ride')
-
+const Ride = require('./models/ride');
+const User = require('./models/user');
 const app = express();
 const db_uri = `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@cluster0.lhpdr.mongodb.net/${process.env.MONGO_DB}?retryWrites=true&w=majority`;
 
@@ -25,6 +26,12 @@ app.use(
                 isDriver: Boolean!
             }
 
+            type User {
+                _id: ID!
+                email: String!
+                password: String
+            }
+
             input RideInput {
                 destLocation: String!
                 departLocation: String!
@@ -34,12 +41,18 @@ app.use(
                 isDriver: Boolean!
             }
 
+            input UserInput {
+                email: String!
+                password: String!
+            }
+
             type RootQuery {
                 rides: [Ride!]!
             }
             
             type RootMutation {
                 createRide(rideInput: RideInput): Ride
+                createUser(userInput: UserInput): User
             }
 
             schema {
@@ -67,17 +80,54 @@ app.use(
                     date: new Date(args.rideInput.date),
                     price: args.rideInput.price,
                     description: args.rideInput.description,
-                    isDriver: args.rideInput.isDriver
+                    isDriver: args.rideInput.isDriver,
+                    creator: '613616427985426a2bdeed91' // const obtained from MongoDB for now
                 });
+                let createdRide;
                 return newRide
                     .save()
                     .then(result => {
-                        console.log(result);
-                        return { ...result._doc, _id:result._doc._id.toString() };
+                        createdRide = { ...result._doc, _id:result._doc._id.toString() };
+                        return User.findById('613616427985426a2bdeed91');
+                    })
+                    .then(user => {
+                        if (!user) {
+                            throw new Error("User not found");
+                        }
+                        user.createdRides.push(newRide);
+                        return user.save();
+                    })
+                    .then(result => {
+                        return createdRide;
                     })
                     .catch(err => {
                         console.log(err);
                     });
+            },
+            createUser: args => {
+                return User.findOne({ email: args.userInput.email }).then(user => {
+                    if (user) {
+                        throw new Error('User already exists.')
+                    }
+                    return bcrypt.hash(args.userInput.password, 12);
+                })
+                .then(hashedPassword => {
+                    const newUser = new User({
+                        email: args.userInput.email,
+                        password: hashedPassword
+                    });
+                    return newUser.save()
+                        .then(result => {
+                            console.log(result);
+                            return { ...result._doc, password: null, _id:result._doc._id.toString() };
+                        })
+                        .catch(err => {
+                            console.log(err);
+                        }); 
+                    })
+                .catch(err => {
+                    throw err
+                });
             }
 
         },
