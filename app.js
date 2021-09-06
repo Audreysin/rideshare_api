@@ -12,6 +12,27 @@ const db_uri = `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASS
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+const populateRide = rideIds => {
+    return Ride.find({_id: {$in:  rideIds}}).then(rides => {
+        return rides.map(ride => {
+            return { ...ride._doc, _id: ride.id, creator: populateUser.bind(this, ride.creator)}
+        })
+    })
+    .catch(err => {
+        throw err;
+    })
+}
+
+const populateUser = userId => {
+    return User.findById(userId)
+        .then(userData => {
+            return { ...userData._doc, _id: userData.id, createdRides: populateRide.bind(this, userData._doc.createdRides) };
+        })
+        .catch(err => {
+            throw err
+        })
+}
+
 app.use(
     '/api',
     graphqlHTTP({
@@ -24,12 +45,14 @@ app.use(
                 price: Float!
                 description: String!
                 isDriver: Boolean!
+                creator: User!
             }
 
             type User {
                 _id: ID!
                 email: String!
                 password: String
+                createdRides: [Ride!]
             }
 
             input RideInput {
@@ -66,7 +89,11 @@ app.use(
                     .find()
                     .then(rides => {
                         return rides.map(ride => {
-                            return { ...ride._doc, _id:ride._doc._id.toString() };
+                            return { 
+                                ...ride._doc, 
+                                _id:ride._doc._id.toString(),
+                                creator: populateUser.bind(this, ride._doc.creator)
+                            };
                         });
                     })
                     .catch(err => {
@@ -87,7 +114,7 @@ app.use(
                 return newRide
                     .save()
                     .then(result => {
-                        createdRide = { ...result._doc, _id:result._doc._id.toString() };
+                        createdRide = { ...result._doc, _id:result._doc._id.toString(), creator: populateUser.bind(this, result._doc.creator) };
                         return User.findById('613616427985426a2bdeed91');
                     })
                     .then(user => {
@@ -119,7 +146,7 @@ app.use(
                     return newUser.save()
                         .then(result => {
                             console.log(result);
-                            return { ...result._doc, password: null, _id:result._doc._id.toString() };
+                            return { ...result._doc, password: null, _id: result._doc._id.toString() };
                         })
                         .catch(err => {
                             console.log(err);
