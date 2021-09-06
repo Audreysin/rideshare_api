@@ -19,6 +19,12 @@ module.exports = buildSchema(`
         createdRides: [Ride!]
     }
 
+    type AuthData {
+        userId: ID!
+        token: String!
+        tokenExpiration: Int!
+    }
+
     input RideInput {
         destLocation: String!
         departLocation: String!
@@ -35,6 +41,7 @@ module.exports = buildSchema(`
 
     type RootQuery {
         rides: [Ride!]!
+        login(email: String!, password: String!): AuthData!
     }
 
     type RootMutation {

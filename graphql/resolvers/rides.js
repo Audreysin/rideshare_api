@@ -13,7 +13,10 @@ module.exports = {
             throw err
         }
     },
-    createRide: async args => {
+    createRide: async (args, req) => {
+        if (!req.isAuth) {
+            throw new Error("Unauthenticated");
+        }
         const newRide = new Ride({
             destLocation: args.rideInput.destLocation,
             departLocation: args.rideInput.departLocation,
@@ -21,13 +24,13 @@ module.exports = {
             price: args.rideInput.price,
             description: args.rideInput.description,
             isDriver: args.rideInput.isDriver,
-            creator: '613616427985426a2bdeed91' // const obtained from MongoDB for now
+            creator: req.userId
         });
         let createdRide;
         try {
             const result = await newRide.save();
             createdRide = transformRide(result);
-            const user = await User.findById('613616427985426a2bdeed91');
+            const user = await User.findById(req.userId);
             if (!user) {
                 throw new Error("User not found");
             }
